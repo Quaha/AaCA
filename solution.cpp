@@ -1,21 +1,21 @@
 #include <iostream>
 #include <cmath>
 #include <vector>
-#include <cstdint>
+#include <fstream>
 
-using Vertex = int;
+using idx_t = int;
 using Weight = long long;
 
-const Weight DIST_INF = std::numeric_limits<Weight>::max() / 4;
+const Weight DIST_INF = 2e18;
+
+const idx_t MAX_GRAPH_SIZE = 1e9;
+const Weight MAX_EDGE_WEIGHT = 1e9;
 
 class DirectedGraph {
 public:
 
-    const static int MAX_GRAPH_SIZE = std::numeric_limits<int>::max() / 2;
-    const static Weight MAX_EDGE_WEIGHT = std::numeric_limits<int>::max() / 2;
-
     struct Edge {
-        Vertex adjacent_vertex;
+        idx_t adjacent_vertex;
         Weight weight;
     };
 
@@ -23,15 +23,15 @@ public:
 
 protected:
 
-    int n = 0; // number of vertices
-    int m = 0; // number of edges
+    idx_t n = 0; // number of vertices
+    idx_t m = 0; // number of edges
 
     std::vector<AdjacencyList> adjacency_lists; // vertex numbers from 1 to n
 
 public:
 
-    bool isCorrectVertex(Vertex u) const {
-        return static_cast<Vertex>(1) <= u && u <= static_cast<Vertex>(n);
+    bool isCorrectVertex(idx_t u) const {
+        return 1 <= u && u <= n;
     }
 
     bool isCorrectWeight(Weight w) const {
@@ -59,8 +59,8 @@ public:
 
         adjacency_lists.assign(n + 1, AdjacencyList{});
 
-        for (int i = 0; i < m; ++i) {
-            Vertex u, v;
+        for (idx_t i = 0; i < m; ++i) {
+            idx_t u, v;
             in >> u >> v;
 
             if (!isCorrectVertex(u) || !isCorrectVertex(v)) {
@@ -78,52 +78,74 @@ public:
         }
     }
 
-    const AdjacencyList& getAdjacentVertices(Vertex u) const {
+    const AdjacencyList& getAdjacentVertices(const idx_t u) const {
         if (!isCorrectVertex(u)) {
             throw std::runtime_error("Incorrect vertex!");
         }
         return adjacency_lists[u];
     }
 
-    int getCountOfVertices() const {
+    idx_t getCountOfVertices() const {
         return n;
     }
 
-    void clear() {
-        n = 0;
-        m = 0;
+    idx_t getCountOfEdges() const {
+        return m;
+    }
 
+    void clear() {
+        n = m = 0;
         adjacency_lists.clear();
         adjacency_lists.shrink_to_fit();
     }
 };
 
-std::pair<std::vector<Weight>, std::vector<Vertex>> dijkstraWithMarks(const DirectedGraph& g, const Vertex start_vertex) {
-    int n = g.getCountOfVertices();
+struct FullEdge {
+    idx_t u, v;
+    Weight weight;
+};
+
+std::pair<std::vector<Weight>, std::vector<idx_t>> dijkstraWithMarks(const DirectedGraph& g, const idx_t start_vertex) {
+
+    /*
+     * Naive Dijkstra's algorithm (with marks)
+     *
+     * Finds all the shortest paths from the starting
+     * vertex to the others (or INF if there is no path) and
+     * paths (previous vertices or -1 if there is no path to)
+     * 
+     * g - adjacency lists - g[Ui] = {{Vij, Wij}, ...}
+     *
+     * | Multiple Edges |   Loops   |  D/UD |  u   |  w   |
+	 * +----------------+-----------+-------+------+------+
+	 * |      V         |     V     | V / V | >= 1 | >= 0 |
+     * 
+     * Time Complexity:   O(N^2)
+     * Memory Complexity: O(N)
+    */
+
+    const idx_t n = g.getCountOfVertices();
     
     if (!g.isCorrectVertex(start_vertex)) {
         throw std::invalid_argument("Incorrect start vertex!");
     }
 
     std::vector<Weight> dist(n + 1, DIST_INF);
-    std::vector<Vertex> from(n + 1, 0);
+    std::vector<idx_t> path(n + 1, -1);
     
     dist[start_vertex] = 0;
 
     std::vector<bool> visited(n + 1, false);
 
-    for (int i = 0; i < n; ++i) {
+    for (idx_t i = 0; i < n; ++i) {
 
-        Vertex nearest = 1;
+        idx_t nearest = 1;
         while (visited[nearest]) {
             ++nearest;
         }
 
-        for (Vertex vertex = nearest + 1; vertex <= n; ++vertex) {
-            if (visited[vertex]) {
-                continue;
-            }
-            if (dist[vertex] < dist[nearest]) {
+        for (idx_t vertex = nearest + 1; vertex <= n; ++vertex) {
+            if (!visited[vertex] && dist[vertex] < dist[nearest]) {
                 nearest = vertex;
             }
         }
@@ -137,51 +159,144 @@ std::pair<std::vector<Weight>, std::vector<Vertex>> dijkstraWithMarks(const Dire
         for (const auto &[adjacent_vertex, weight]: g.getAdjacentVertices(nearest)) {
             if (dist[adjacent_vertex] > dist[nearest] + weight) {
                 dist[adjacent_vertex] = dist[nearest] + weight;
-                from[adjacent_vertex] = nearest;
+                path[adjacent_vertex] = nearest;
             }
         }
     }
     
-    return {dist, from};
+    return std::make_pair(dist, path);
 }
 
-std::pair<std::vector<Weight>, std::vector<Vertex>> fordBellman(const DirectedGraph& g, const Vertex start_vertex) {
-    int n = g.getCountOfVertices();
+std::pair<std::vector<Weight>, std::vector<idx_t>> fordBellman(const DirectedGraph& g, const idx_t start_vertex) {
+
+    /*
+    * Ford-Bellman algorithm
+    *
+    * Finds all the shortest distances from the starting
+    * vertex to the others (or INF if there is no path, or -INF
+    * if there is no shortest path [negative cycle]) and paths
+    * (previous vertices or -1 if there is no path to)
+    * 
+    * g - adjacency lists - g[Ui] = {{Vij, Wij}, ...} 
+    *
+    * | Multiple Edges |   Loops   |  D/UD |  u   |  w  |
+    * +----------------+-----------+-------+------+-----+
+    * |      V         |     V     | V / V | >= 0 | any |
+    * 
+    * Time Complexity:   O(N*M)
+    * Memory Complexity: O(N + M)
+    */
+
+    const idx_t n = g.getCountOfVertices();
     
     if (!g.isCorrectVertex(start_vertex)) {
         throw std::invalid_argument("Incorrect start vertex!");
     }
 
-    std::vector<Weight> dist(n + 1, DIST_INF);
-    std::vector<Vertex> from(n + 1, 0);
-    
-    dist[start_vertex] = 0;
+    std::vector<FullEdge> edges;
+    edges.reserve(g.getCountOfEdges());
 
-    for (int i = 0; i + 1 != n; ++i) {
-        for (Vertex u = 1; u <= n; ++u) {
-            for (const auto &[v, weight]: g.getAdjacentVertices(u)) {
-                if (dist[u] != DIST_INF && dist[v] > dist[u] + weight) {
-                    dist[v] = dist[u] + weight;
-                    from[v] = u;
-                }
-            }
+    for (idx_t u = 1; u <= n; ++u) {
+        for (const auto &[v, weight]: g.getAdjacentVertices(u))  {
+            edges.push_back(FullEdge(u, v, weight));
         }
     }
     
-    return {dist, from};
+    std::vector<Weight> dist(n + 1, DIST_INF);
+    std::vector<idx_t> path(n + 1, -1);
+    
+    dist[start_vertex] = 0;
+
+    for (idx_t i = 0; i + 1 < n; ++i) {
+        for (const auto& [u, v, weight]: edges) {
+			if (dist[u] != DIST_INF && dist[v] > dist[u] + weight) {
+				dist[v] = std::max(dist[u] + weight, -DIST_INF);
+				path[v] = u;
+			}
+        }
+    }
+    
+    for (idx_t i = 0; i + 1 < n; ++i) {
+        for (const auto& [u, v, weight]: edges) {
+			if (dist[u] != DIST_INF && dist[v] > dist[u] + weight) {
+				dist[v] = -DIST_INF;
+				path[v] = -1;
+			}
+        }
+    }
+
+    return std::make_pair(dist, path);
 }
 
 
 int main() {
+    try {
+        std::freopen("input.txt", "r", stdin);
 
-    freopen("input.txt", "r", stdin);
-	freopen("output.txt", "w", stdout);
+        DirectedGraph g;
+        g.readGraph();
 
-    DirectedGraph g;
-    g.readGraph();
+        const idx_t start_vertex = 1;
 
-    for (long long V: fordBellman(g, 1).first) {
-        std::cout << V << " ";
+        // --- Dijkstra ---
+        {
+            const auto [dist, path] = dijkstraWithMarks(g, start_vertex);
+
+            std::ofstream out("dijkstra.txt");
+            if (!out.is_open()) {
+                throw std::runtime_error("Cannot open dijkstra.txt for writing");
+            }
+
+            for (idx_t i = 1; i <= g.getCountOfVertices(); ++i) {
+                if (dist[i] >= DIST_INF)
+                    out << "INF ";
+                else
+                    out << dist[i] << " ";
+            }
+            out << "\n";
+
+            for (idx_t i = 1; i <= g.getCountOfVertices(); ++i) {
+                out << path[i] << " ";
+            }
+            out << "\n";
+
+            out.close();
+        }
+
+        // --- Ford–Bellman ---
+        {
+            const auto [dist, path] = fordBellman(g, start_vertex);
+
+            std::ofstream out("fordbellman.txt");
+            if (!out.is_open()) {
+                throw std::runtime_error("Cannot open fordbellman.txt for writing");
+            }
+
+            for (idx_t i = 1; i <= g.getCountOfVertices(); ++i) {
+                if (dist[i] >= DIST_INF) {
+                    out << "INF ";
+                }
+                else if (dist[i] <= -DIST_INF) {
+                    out << "-INF ";
+                }
+                else {
+                    out << dist[i] << " ";
+                }
+            }
+            out << "\n";
+
+            for (idx_t i = 1; i <= g.getCountOfVertices(); ++i) {
+                out << path[i] << " ";
+            }
+            out << "\n";
+
+            out.close();
+        }
+
+    } 
+    catch (const std::exception &e) {
+        std::cout << "Error: " << e.what() << "\n";
+        return 1;
     }
 
     return 0;

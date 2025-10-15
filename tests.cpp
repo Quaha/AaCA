@@ -6,6 +6,8 @@
 #include <fstream>
 #include <random>
 
+#include <chrono>
+
 using idx_t = int;
 using Weight = long long;
 
@@ -260,76 +262,44 @@ std::pair<std::vector<Weight>, std::vector<idx_t>> fordBellman(const DirectedGra
     return std::make_pair(dist, path);
 }
 
+class Timer {
+private:
+    static std::chrono::steady_clock::time_point last;
+public:
+    static double getTimeSinceLastCall() {
+        auto now = std::chrono::steady_clock::now();
+        double elapsed = std::chrono::duration<double, std::milli>(now - last).count();  
+        last = now;
+        return elapsed;
+    }
+};
 
-int main() {
-    try {
-        std::freopen("input.txt", "r", stdin);
+std::chrono::steady_clock::time_point Timer::last = std::chrono::steady_clock::now();
 
-        DirectedGraph g;
-        g.readGraph();
+int main(int argc, char* argv[]) {
 
-        const idx_t start_vertex = 1;
+    idx_t n = static_cast<idx_t>(std::stoll(argv[1]));
+    idx_t m = static_cast<idx_t>(std::stoll(argv[2]));
+    Weight q = static_cast<Weight>(std::stoll(argv[3]));
+    Weight r = static_cast<Weight>(std::stoll(argv[4]));
 
-        // --- Dijkstra ---
-        {
-            const auto [dist, path] = dijkstraWithMarks(g, start_vertex);
+    char mode = argv[5][0]; // 'A' or 'B'
 
-            std::ofstream out("dijkstra.txt");
-            if (!out.is_open()) {
-                throw std::runtime_error("Cannot open dijkstra.txt for writing");
-            }
+    DirectedGraph g;
+    g.generateRandom(n, m, q, r);
 
-            for (idx_t i = 1; i <= g.getCountOfVertices(); ++i) {
-                if (dist[i] >= DIST_INF)
-                    out << "INF ";
-                else
-                    out << dist[i] << " ";
-            }
-            out << "\n";
-
-            for (idx_t i = 1; i <= g.getCountOfVertices(); ++i) {
-                out << path[i] << " ";
-            }
-            out << "\n";
-
-            out.close();
-        }
-
-        // --- Ford–Bellman ---
-        {
-            const auto [dist, path] = fordBellman(g, start_vertex);
-
-            std::ofstream out("fordbellman.txt");
-            if (!out.is_open()) {
-                throw std::runtime_error("Cannot open fordbellman.txt for writing");
-            }
-
-            for (idx_t i = 1; i <= g.getCountOfVertices(); ++i) {
-                if (dist[i] >= DIST_INF) {
-                    out << "INF ";
-                }
-                else if (dist[i] <= -DIST_INF) {
-                    out << "-INF ";
-                }
-                else {
-                    out << dist[i] << " ";
-                }
-            }
-            out << "\n";
-
-            for (idx_t i = 1; i <= g.getCountOfVertices(); ++i) {
-                out << path[i] << " ";
-            }
-            out << "\n";
-
-            out.close();
-        }
-
-    } 
-    catch (const std::exception &e) {
-        std::cout << "Error: " << e.what() << "\n";
-        return 1;
+    double t = 0.0;
+    if (mode == 'A') {
+        Timer::getTimeSinceLastCall();
+        dijkstraWithMarks(g, 1);
+        t = Timer::getTimeSinceLastCall();
+    }
+    if (mode == 'B') {
+        Timer::getTimeSinceLastCall();
+        fordBellman(g, 1);
+        t = Timer::getTimeSinceLastCall();
     }
 
+    std::cout << t << std::endl;
     return 0;
 }

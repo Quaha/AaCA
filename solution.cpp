@@ -130,6 +130,31 @@ public:
             adjacency_lists[u].push_back(Edge(v, w));
         }
     }
+
+    // This function leaves the edge with the minimum weight.
+    void excludeMultipleEdges() {
+        for (idx_t u = 1; u <= n; ++u) {
+            std::vector<idx_t> last_id(n + 1, -1);
+            for (idx_t i = 0; i < adjacency_lists[u].size(); i++) {
+                idx_t v = adjacency_lists[u][i].adjacent_vertex;
+                idx_t w = adjacency_lists[u][i].weight;
+
+                int &id = last_id[v];
+
+                if (id == -1) {
+                    id = i;
+                }
+                else {
+                    if (w < adjacency_lists[u][id].weight) {
+                        std::swap(adjacency_lists[u][id], adjacency_lists[u][i]);   
+                    }
+                    std::swap(adjacency_lists[u][i], adjacency_lists[u].back());
+                    adjacency_lists[u].pop_back();
+                    --i;
+                }
+            }
+        }
+    }
 };
 
 struct FullEdge {

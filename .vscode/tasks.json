@@ -7,20 +7,11 @@
             "command": "g++",
             "args": [
                 "-std=c++23",
-                "-O3",
-                "-march=native",
-                "-DNDEBUG",
-                "${file}",
-                "-o",
-                "${workspaceFolder}/main"
-            ]
-            /*"args": [
-                "-std=c++23",
                 "-g",
                 "${file}",
                 "-o",
                 "${workspaceFolder}/main"
-            ],*/
+            ],
             "group": {
                 "kind": "build",
                 "isDefault": true

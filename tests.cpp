@@ -308,24 +308,41 @@ int main(int argc, char* argv[]) {
     Weight q = static_cast<Weight>(std::stoll(argv[3]));
     Weight r = static_cast<Weight>(std::stoll(argv[4]));
 
-    char mode = argv[5][0]; // 'A', 'B' or G
+    char mode = argv[5][0]; // 'A', 'B', 'G'
 
     DirectedGraph g;
-    g.generateRandom(n, m, q, r);
+
+    if (mode == 'G') {
+        g.generateRandom(n, m, q, r);
+
+        std::ofstream out("input.txt");
+
+        out << n << " " << m << "\n";
+        for (idx_t u = 1; u <= n; ++u) {
+            for (const auto& [v, w] : g.getAdjacentVertices(u)) {
+                out << u << " " << v << " " << w << "\n";
+            }
+        }
+        return 0;
+    }
+
+    {
+        std::ifstream in("input.txt");
+        g.readGraph(in);
+    }
 
     double t = 0.0;
     if (mode == 'A') {
+        g.excludeMultipleEdges();
+
         Timer::getTimeSinceLastCall();
         dijkstraWithMarks(g, 1);
         t = Timer::getTimeSinceLastCall();
-    }
-    if (mode == 'B') {
+    } 
+    else if (mode == 'B') {
         Timer::getTimeSinceLastCall();
         fordBellman(g, 1);
         t = Timer::getTimeSinceLastCall();
-    }
-    if (mode == 'G') {
-        // generate
     }
 
     std::cout << t << std::endl;

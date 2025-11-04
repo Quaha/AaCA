@@ -1,5 +1,3 @@
-#pragma GCC optimize ("O3")
-
 #include <iostream>
 #include <cmath>
 #include <vector>
@@ -7,284 +5,257 @@
 #include <random>
 
 using idx_t = int;
-using Weight = long long;
 
-const Weight DIST_INF = 2e18;
+namespace Graphs {
 
-const idx_t MAX_GRAPH_SIZE = 1e9;
-const Weight MAX_EDGE_WEIGHT = 1e9;
+    using Weight = long long;
 
-class DirectedGraph {
-public:
+    const Weight DIST_INF = 2e18;
+
+    const idx_t MAX_GRAPH_SIZE = 1e9;
+    const Weight MAX_EDGE_WEIGHT = 1e9;
 
     struct Edge {
+        idx_t u, v;
+        Weight weight;
+    };
+
+    struct DirectedEdge {
         idx_t adjacent_vertex;
         Weight weight;
     };
 
-    using AdjacencyList = std::vector<Edge>;
+    using AdjacencyList = std::vector<DirectedEdge>;
+    using AdjacencyMatrix = std::vector<std::vector<Weight>>;
+    using EdgeList = std::vector<Edge>;
 
-protected:
+    class DirectedGraph {
+    protected:
 
-    idx_t n = 0; // number of vertices
-    idx_t m = 0; // number of edges
+        idx_t n = 0; // number of vertices
+        idx_t m = 0; // number of edges
 
-    std::vector<AdjacencyList> adjacency_lists; // vertex numbers from 1 to n
+        std::vector<AdjacencyList> adjacency_lists; // vertex numbers from 1 to n
 
-public:
+    public:
 
-    bool isCorrectVertex(idx_t u) const {
-        return 1 <= u && u <= n;
-    }
-
-    bool isCorrectWeight(Weight w) const {
-        return std::abs(w) <= MAX_EDGE_WEIGHT;
-    }
-
-    bool isCorrectParameters() const {
-        if (n == 0 && m != 0) {
-            return false;
-        }
-        if (n < 0 || n > MAX_GRAPH_SIZE) {
-            return false;
-        }
-        return true;
-    }
-
-public:
-
-    void readGraph(std::istream& in = std::cin) {
-        in >> n >> m;
-
-        if (!isCorrectParameters()) {
-            throw std::invalid_argument("Incorrect graph parameters!");
+        bool isCorrectVertex(idx_t u) const {
+            return 1 <= u && u <= n;
         }
 
-        adjacency_lists.assign(n + 1, AdjacencyList{});
+        bool isCorrectWeight(Weight w) const {
+            return std::abs(w) <= MAX_EDGE_WEIGHT;
+        }
 
-        for (idx_t i = 0; i < m; ++i) {
-            idx_t u, v;
-            in >> u >> v;
+        bool isCorrectParameters() const {
+            if (n == 0 && m != 0) {
+                return false;
+            }
+            if (n < 0 || n > MAX_GRAPH_SIZE) {
+                return false;
+            }
+            return true;
+        }
 
-            if (!isCorrectVertex(u) || !isCorrectVertex(v)) {
-                throw std::invalid_argument("Incorrect vertex!");
+    public:
+
+        void readGraph(std::istream& in = std::cin) {
+            in >> n >> m;
+
+            if (!isCorrectParameters()) {
+                throw std::invalid_argument("Incorrect graph parameters!");
             }
 
-            Weight weight;
-            in >> weight;
+            adjacency_lists.assign(n + 1, AdjacencyList{});
 
-            if (!isCorrectWeight(weight)) {
-                throw std::invalid_argument("Incorrect weight!");
-            }
+            for (idx_t i = 0; i < m; ++i) {
+                idx_t u, v;
+                in >> u >> v;
 
-            adjacency_lists[u].push_back(Edge(v, weight));
-        }
-    }
-
-    const AdjacencyList& getAdjacentVertices(const idx_t u) const {
-        if (!isCorrectVertex(u)) {
-            throw std::runtime_error("Incorrect vertex!");
-        }
-        return adjacency_lists[u];
-    }
-
-    idx_t getCountOfVertices() const {
-        return n;
-    }
-
-    idx_t getCountOfEdges() const {
-        return m;
-    }
-
-    void clear() {
-        n = m = 0;
-        adjacency_lists.clear();
-        adjacency_lists.shrink_to_fit();
-    }
-
-    void generateRandom(const idx_t n, const idx_t m, const Weight q, const Weight r) {
-        if (n <= 0 || m < 0)
-            throw std::invalid_argument("Incorrect graph parameters!");
-        if (q > r)
-            throw std::invalid_argument("Incorrect weight bounds!");
-        if (n > MAX_GRAPH_SIZE)
-            throw std::invalid_argument("Graph too large!");
-
-        this->clear();
-
-        this->n = n;
-        this->m = m;
-
-        adjacency_lists.resize(n + 1);
-
-        std::random_device rd;
-        std::mt19937_64 rng(rd());
-        std::uniform_int_distribution<idx_t> vertex_dist(1, n);
-        std::uniform_int_distribution<Weight> weight_dist(q, r);
-
-        for (idx_t i = 0; i < m; ++i) {
-            idx_t u = vertex_dist(rng);
-            idx_t v = vertex_dist(rng);
-            Weight w = weight_dist(rng);
-
-            adjacency_lists[u].push_back(Edge(v, w));
-        }
-    }
-
-    // This function leaves the edge with the minimum weight.
-    void excludeMultipleEdges() {
-        for (idx_t u = 1; u <= n; ++u) {
-            std::vector<idx_t> last_id(n + 1, -1);
-            for (idx_t i = 0; i < adjacency_lists[u].size(); i++) {
-                idx_t v = adjacency_lists[u][i].adjacent_vertex;
-                idx_t w = adjacency_lists[u][i].weight;
-
-                int &id = last_id[v];
-
-                if (id == -1) {
-                    id = i;
+                if (!isCorrectVertex(u) || !isCorrectVertex(v)) {
+                    throw std::invalid_argument("Incorrect vertex!");
                 }
-                else {
-                    if (w < adjacency_lists[u][id].weight) {
-                        std::swap(adjacency_lists[u][id], adjacency_lists[u][i]);   
-                    }
-                    std::swap(adjacency_lists[u][i], adjacency_lists[u].back());
-                    adjacency_lists[u].pop_back();
-                    --i;
+
+                Weight weight;
+                in >> weight;
+
+                if (!isCorrectWeight(weight)) {
+                    throw std::invalid_argument("Incorrect weight!");
+                }
+
+                adjacency_lists[u].push_back(DirectedEdge(v, weight));
+            }
+        }
+
+        void printGraph(std::ostream& out = std::cout) const {
+            out << n << " " << m << "\n";
+            for (idx_t u = 1; u <= n; ++u) {
+                for (const auto& [v, w] : getAdjacentVertices(u)) {
+                    out << u << " " << v << " " << w << "\n";
                 }
             }
         }
-    }
-};
 
-struct FullEdge {
-    idx_t u, v;
-    Weight weight;
-};
-
-std::pair<std::vector<Weight>, std::vector<idx_t>> dijkstraWithMarks(const DirectedGraph& g, const idx_t start_vertex) {
-
-    /*
-     * Naive Dijkstra's algorithm (with marks)
-     *
-     * Finds all the shortest paths from the starting
-     * vertex to the others (or INF if there is no path) and
-     * paths (previous vertices or -1 if there is no path to)
-     * 
-     * g - adjacency lists - g[Ui] = {{Vij, Wij}, ...}
-     *
-     * | Multiple Edges |   Loops   |  D/UD |  u   |  w   |
-	 * +----------------+-----------+-------+------+------+
-	 * |      V         |     V     | V / V | >= 1 | >= 0 |
-     * 
-     * Time Complexity:   O(N^2)
-     * Memory Complexity: O(N)
-    */
-
-    const idx_t n = g.getCountOfVertices();
-    
-    if (!g.isCorrectVertex(start_vertex)) {
-        throw std::invalid_argument("Incorrect start vertex!");
-    }
-
-    std::vector<Weight> dist(n + 1, DIST_INF);
-    std::vector<idx_t> path(n + 1, -1);
-    
-    dist[start_vertex] = 0;
-
-    std::vector<bool> visited(n + 1, false);
-
-    for (idx_t i = 0; i < n; ++i) {
-
-        idx_t nearest = 1;
-        while (visited[nearest]) {
-            ++nearest;
+        const AdjacencyList& getAdjacentVertices(const idx_t u) const {
+            if (!isCorrectVertex(u)) {
+                throw std::runtime_error("Incorrect vertex!");
+            }
+            return adjacency_lists[u];
         }
 
-        for (idx_t vertex = nearest + 1; vertex <= n; ++vertex) {
-            if (!visited[vertex] && dist[vertex] < dist[nearest]) {
-                nearest = vertex;
+        idx_t getCountOfVertices() const {
+            return n;
+        }
+
+        idx_t getCountOfEdges() const {
+            return m;
+        }
+
+        void clear() {
+            n = m = 0;
+            adjacency_lists.clear();
+            adjacency_lists.shrink_to_fit();
+        }
+
+        void generateRandomGraph(const idx_t n, const idx_t m, const Weight q, const Weight r) {
+
+            this->clear();
+
+            this->n = n;
+            this->m = m;
+
+            if (!isCorrectParameters())
+                throw std::invalid_argument("Incorrect graph parameters!");
+            if (q > r)
+                throw std::invalid_argument("Incorrect weight bounds!");
+            if (n > MAX_GRAPH_SIZE)
+                throw std::invalid_argument("Graph too large!");
+
+            adjacency_lists.resize(n + 1);
+
+            std::random_device rd;
+            std::mt19937_64 rng(rd());
+            std::uniform_int_distribution<idx_t> vertex_dist(1, n);
+            std::uniform_int_distribution<Weight> weight_dist(q, r);
+
+            for (idx_t i = 0; i < m; ++i) {
+                idx_t u = vertex_dist(rng);
+                idx_t v = vertex_dist(rng);
+                Weight w = weight_dist(rng);
+
+                adjacency_lists[u].push_back(DirectedEdge(v, w));
             }
         }
 
-        visited[nearest] = true;
+        AdjacencyMatrix getAdjacencyMatrix() const {
+            AdjacencyMatrix matrix(n + 1, std::vector<Weight>(n + 1, DIST_INF));
 
-        if (dist[nearest] == DIST_INF) {
-            continue;
+            for (idx_t curr_V = 1; curr_V <= n; ++curr_V) {
+                for (auto [next_V, w]: getAdjacentVertices(curr_V)) {
+                    matrix[curr_V][next_V] = std::min(matrix[curr_V][next_V], w);
+                }
+            }
+
+            return matrix;
         }
 
-        for (const auto &[adjacent_vertex, weight]: g.getAdjacentVertices(nearest)) {
-            if (dist[adjacent_vertex] > dist[nearest] + weight) {
-                dist[adjacent_vertex] = dist[nearest] + weight;
-                path[adjacent_vertex] = nearest;
+        EdgeList getEdgeList() const {
+            EdgeList edges;
+
+            for (idx_t curr_V = 1; curr_V <= n; ++curr_V) {
+                for (auto [next_V, w]: getAdjacentVertices(curr_V)) {
+                    edges.push_back({curr_V, next_V, w});
+                }
+            }       
+
+            return edges;
+        }
+    };
+
+    std::pair<std::vector<Weight>, std::vector<idx_t>> dijkstraWithMarks(const idx_t n, const AdjacencyMatrix& g, const idx_t start_vertex) {
+
+        /*
+        * Naive Dijkstra's algorithm (with marks)
+        *
+        * Finds all the shortest paths from the starting
+        * vertex to the others (or INF if there is no path) and
+        * paths (previous vertices or -1 if there is no path to)
+        * 
+        * g - adjacency matrix - g[u][v] = Wuv (or +INF)
+        *
+        * Time Complexity: O(N^2)
+        */
+
+        std::vector<Weight> dist(n + 1, DIST_INF);
+        std::vector<idx_t> path(n + 1, -1);
+        
+        dist[start_vertex] = 0;
+
+        std::vector<bool> visited(n + 1, false);
+
+        for (idx_t i = 0; i < n; ++i) {
+
+            idx_t nearest = 1;
+            while (visited[nearest]) {
+                ++nearest;
+            }
+
+            for (idx_t vertex = nearest + 1; vertex <= n; ++vertex) {
+                if (!visited[vertex] && dist[vertex] < dist[nearest]) {
+                    nearest = vertex;
+                }
+            }
+
+            visited[nearest] = true;
+
+            if (dist[nearest] == DIST_INF) {
+                continue;
+            }
+
+            for (idx_t adjacent_vertex = 1; adjacent_vertex <= n; ++adjacent_vertex) {
+                Weight weight = g[nearest][adjacent_vertex];
+                if (dist[adjacent_vertex] > dist[nearest] + weight) {
+                    dist[adjacent_vertex] = dist[nearest] + weight;
+                    path[adjacent_vertex] = nearest;
+                }
             }
         }
-    }
-    
-    return std::make_pair(dist, path);
-}
-
-std::pair<std::vector<Weight>, std::vector<idx_t>> fordBellman(const DirectedGraph& g, const idx_t start_vertex) {
-
-    /*
-    * Ford-Bellman algorithm
-    *
-    * Finds all the shortest distances from the starting
-    * vertex to the others (or INF if there is no path, or -INF
-    * if there is no shortest path [negative cycle]) and paths
-    * (previous vertices or -1 if there is no path to)
-    * 
-    * g - adjacency lists - g[Ui] = {{Vij, Wij}, ...} 
-    *
-    * | Multiple Edges |   Loops   |  D/UD |  u   |  w  |
-    * +----------------+-----------+-------+------+-----+
-    * |      V         |     V     | V / V | >= 0 | any |
-    * 
-    * Time Complexity:   O(N*M)
-    * Memory Complexity: O(N + M)
-    */
-
-    const idx_t n = g.getCountOfVertices();
-    
-    if (!g.isCorrectVertex(start_vertex)) {
-        throw std::invalid_argument("Incorrect start vertex!");
+        
+        return std::make_pair(dist, path);
     }
 
-    std::vector<FullEdge> edges;
-    edges.reserve(g.getCountOfEdges());
+    std::pair<std::vector<Weight>, std::vector<idx_t>> fordBellman(const idx_t n, const EdgeList& g, const idx_t start_vertex) {
 
-    for (idx_t u = 1; u <= n; ++u) {
-        for (const auto &[v, weight]: g.getAdjacentVertices(u))  {
-            edges.push_back(FullEdge(u, v, weight));
+        /*
+        * Ford-Bellman algorithm
+        *
+        * Finds all the shortest distances from the starting
+        * vertex to the others (or +INF if there is no path) and
+        * paths (previous vertices or -1 if there is no path to)
+        * 
+        * g - edge list - g = {{u1, v1, w1}, {u2, v2, w2}, ...} 
+        * 
+        * Time Complexity:   O(N*M)
+        */
+
+        std::vector<Weight> dist(n + 1, DIST_INF);
+        std::vector<idx_t> path(n + 1, -1);
+        
+        dist[start_vertex] = 0;
+
+        for (idx_t i = 0; i + 1 < n; ++i) {
+            for (const auto& [u, v, weight]: g) {
+                if (dist[u] != DIST_INF && dist[v] > dist[u] + weight) {
+                    dist[v] = dist[u] + weight;
+                    path[v] = u;
+                }
+            }
         }
-    }
-    
-    std::vector<Weight> dist(n + 1, DIST_INF);
-    std::vector<idx_t> path(n + 1, -1);
-    
-    dist[start_vertex] = 0;
 
-    for (idx_t i = 0; i + 1 < n; ++i) {
-        for (const auto& [u, v, weight]: edges) {
-			if (dist[u] != DIST_INF && dist[v] > dist[u] + weight) {
-				dist[v] = std::max(dist[u] + weight, -DIST_INF);
-				path[v] = u;
-			}
-        }
-    }
-    
-    for (idx_t i = 0; i + 1 < n; ++i) {
-        for (const auto& [u, v, weight]: edges) {
-			if (dist[u] != DIST_INF && dist[v] > dist[u] + weight) {
-				dist[v] = -DIST_INF;
-				path[v] = -1;
-			}
-        }
+        return std::make_pair(dist, path);
     }
 
-    return std::make_pair(dist, path);
-}
-
+} // namespace Graphs
 
 int main() {
 
@@ -294,14 +265,15 @@ int main() {
     try {
         std::freopen("input.txt", "r", stdin);
 
-        DirectedGraph g;
+        Graphs::DirectedGraph g;
         g.readGraph();
 
         const idx_t start_vertex = 1;
 
         // --- Dijkstra ---
         {
-            const auto [dist, path] = dijkstraWithMarks(g, start_vertex);
+            Graphs::AdjacencyMatrix matrix = g.getAdjacencyMatrix();
+            const auto [dist, path] = Graphs::dijkstraWithMarks(g.getCountOfVertices(), matrix, start_vertex);
 
             std::ofstream out("dijkstra.txt");
             if (!out.is_open()) {
@@ -309,7 +281,7 @@ int main() {
             }
 
             for (idx_t i = 1; i <= g.getCountOfVertices(); ++i) {
-                if (dist[i] >= DIST_INF)
+                if (dist[i] >= Graphs::DIST_INF)
                     out << "INF ";
                 else
                     out << dist[i] << " ";
@@ -326,7 +298,9 @@ int main() {
 
         // --- Ford–Bellman ---
         {
-            const auto [dist, path] = fordBellman(g, start_vertex);
+
+            Graphs::EdgeList edge_list = g.getEdgeList();
+            const auto [dist, path] = fordBellman(g.getCountOfVertices(), edge_list, start_vertex);
 
             std::ofstream out("fordbellman.txt");
             if (!out.is_open()) {
@@ -334,11 +308,8 @@ int main() {
             }
 
             for (idx_t i = 1; i <= g.getCountOfVertices(); ++i) {
-                if (dist[i] >= DIST_INF) {
+                if (dist[i] >= Graphs::DIST_INF) {
                     out << "INF ";
-                }
-                else if (dist[i] <= -DIST_INF) {
-                    out << "-INF ";
                 }
                 else {
                     out << dist[i] << " ";

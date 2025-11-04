@@ -2,11 +2,9 @@
 
 g++ -O3 -std=c++23 tests.cpp -o tests
 
-:'
 
 mkdir -p results
 rm -f results/*.txt
-
 
 # === 3.1 ===
 echo "Running 3.1a and 3.1b..."
@@ -64,7 +62,7 @@ for ((m=0; m<=2500000; m+=100000)); do
     echo $((m / 100000))
 done
 
-'
+
 
 # === 3.4 ===
 echo "Running 3.4a and 3.4b..."

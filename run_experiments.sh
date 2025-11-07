@@ -3,14 +3,12 @@
 g++ -O3 -std=c++23 tests.cpp -o tests
 
 
-mkdir -p results
-rm -f results/*.txt
 
 # === 3.1 ===
 echo "Running 3.1a and 3.1b..."
 q=1
 r=1000000
-for ((n=1; n<=3001; n+=100)); do
+for ((n=1; n<=4001; n+=100)); do
     # 3.1a: m = n^2 / 10
     m=$(( n * n / 10 ))
     ./tests $n $m $q $r G
@@ -27,7 +25,6 @@ for ((n=1; n<=3001; n+=100)); do
 
     echo $(((n - 1) / 100))
 done
-
 
 # === 3.2 ===
 echo "Running 3.2a and 3.2b..."
